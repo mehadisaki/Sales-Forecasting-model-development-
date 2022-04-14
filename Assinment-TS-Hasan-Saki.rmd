@@ -1,0 +1,310 @@
+---
+title: ""Impact of Box-Cox Transformation in Forecasting with ARIMA Models - An Application to
+UKDriverDeaths Data in the UK""
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the n?tebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+
+------------------------------------------------------------------?
+UKDriverDeaths is a time series giving the monthly totals of car drivers in Great Britain killed or seriously injured Jan 1969 to Dec 1984. Compulsory wearing of seat belts was introduced on 31 Jan 1983.
+
+```{r}
+plot(UKDriverDeaths)
+
+```
+
+Add a new chunk ?y clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML fil?).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+```{r}
+## Call Laibrary
+library(ggplot2)
+library(forecast)
+library(expsmooth)
+library(digest)
+library(fma)
+library(fpp2)
+library(seasonal)
+library(seastests)
+library(tseries)
+library(ggpubr)
+
+``` 
+
+
+```{r}
+data = UKDriverDeaths
+```
+
+```{r}
+autoplot(data)+ ylab("UK_Driver_Death")
+#ggsave("Data.png")
+```
+
+```{r}
+data %>% ggtsdisplay
+
+```
+
+Transformed data to get stationary data
+
+```{r}
+#seasonality test
+
+isSeasonal(data)
+summary(isSeasonal(data))
+
+
+
+
+```
+
+```{r}
+fried(JohnsonJohnson)
+
+```
+```{r}
+#stationary check
+kpss.test(data)
+
+```
+P-value =0.01 <0.05 so data is not stationary 
+```{r}
+adf.test(data)
+```
+
+p-value = 0.01 <0.05 So data is stationary 
+```{r}
+ndiffs(data) # non-seasonal difference
+nsdiffs(data) # seasonal difference
+```
+
+#Take seasonal Difference for stationary
+```{r}
+data1 <- diff(data,lag=12) 
+data1 %>% ggtsdisplay()
+```
+```{r}
+adf.test(data1)
+kpss.test(data1)
+
+```
+KPSS: P-value =0.1 >0.05 so data is stationary 
+adf : P-value =0.022 <0.05 so data is  stationary 
+```{r}
+
+```
+
+#Take non-seasonal Difference for stationary
+```{r}
+data2 <- diff(data1,differences = 1)
+data2 %>% ggtsdisplay()
+```
+#stationary check
+```{r}
+kpss.test(data2)
+adf.test(data2)
+```
+#Series is now stationary 
+```{r}
+
+
+
+```
+
+
+```{r}
+
+auto.arima(data)
+```
+
+```{r}
+
+```
+
+
+```{r}
+fit <- auto.arima(data,lambda=NULL)
+auto.arima(data)%>% residuals() %>% ggtsdisplay()
+checkresiduals(fit)
+
+```
+```{r}
+accuracy(fit)
+```
+
+```{r}
+Arima(data2, order = c(3,1,4),seasonal = c(1,1,1))
+```
+
+```{r}
+fit1 <- Arima(data2, order = c(3,1,4),seasonal = c(1,1,1))
+fit1 %>% residuals() %>% ggtsdisplay()
+checkresiduals(fit1)
+```
+
+```{r}
+Arima(data, order=c(3,1,3), seasonal=c(1,1,1))
+```
+```{r}
+
+```
+
+#check various model by changing order
+```{r}
+fit2 <- Arima(data, order=c(3,1,3), seasonal=c(1,1,1))
+fit2 %>% residuals() %>% ggtsdisplay()
+checkresiduals(fit2)
+```
+```{r}
+
+```
+
+
+Forcasting
+```{r}
+
+auto.arima(data)%>% forecast(h=12) %>% autoplot()
+```
+```{r}
+auto.arima(data)%>% accuracy()
+```
+
+```{r}
+fit2 <- Arima(data, order=c(3,1,3), seasonal=c(1,1,1))
+fit2 %>% forecast(h=12) %>% autoplot()
+```
+```{r}
+accuracy(fit2)
+```
+```{r}
+
+```
+
+## Efect of Box-cox Transformation
+
+```{r}
+#Transformation
+
+lambda<- BoxCox.lambda(data)
+t_Data<- BoxCox(data, lambda =  lambda)
+```
+```{r}
+ndiffs(data) # non-seasonal difference
+nsdiffs(data) # seasonal difference
+```
+
+```{r}
+t_Data %>% ggtsdisplay()
+```
+#Take seasonal Difference for stationary
+```{r}
+
+t_Data1 <- diff(t_Data,lag=12)  
+t_Data1 %>% ggtsdisplay()
+```
+```{r}
+kpss.test(t_Data1)
+adf.test(t_Data1)
+```
+
+#Take seasonal Difference for stationary
+```{r}
+t_Data2 <- diff(t_Data1,differences = 1)  
+t_Data2 %>% ggtsdisplay()
+```
+```{r}
+kpss.test(t_Data2)
+adf.test(t_Data2)
+
+```
+Data now stationary 
+
+
+
+
+```{r}
+fit_a <- auto.arima(t_Data)
+auto.arima(t_Data) %>% residuals() %>% ggtsdisplay()
+checkresiduals(fit_a)
+```
+```{r}
+accuracy(fit_a)
+```
+
+
+```{r}
+fit_t <- Arima(t_Data2, order=c(2,1,3), seasonal=c(1,1,1))
+fit_t %>% residuals() %>% ggtsdisplay()
+checkresiduals(fit_t)
+```
+
+
+
+
+```{r}
+fit_t1 <- Arima(t_Data2, order=c(1,1,1), seasonal=c(1,1,1))
+fit_t1 %>% residuals() %>% ggtsdisplay()
+checkresiduals(fit_t1)
+```
+
+
+
+
+##Back transformation
+```{r}
+fc2 <- InvBoxCox(t_Data,lambda =lambda , biasadj = FALSE, fvar = NULL)
+
+
+```
+
+```{r}
+autoplot(fc2)
+```
+
+## Forcasting
+
+```{r}
+fit_f <- auto.arima(data, lambda = NULL)%>% forecast(h=12) 
+fit_f1 <- auto.arima(t_Data,biasadj = TRUE) %>% InvBoxCox(lambda = 0.3424065 )%>% forecast(h=12)   
+autoplot(data) + autolayer(fit_f, series=" forecasts without Box-cox", PI=FALSE) +
+  autolayer(fit_f1, series="forecasts with Box-cox",PI=FALSE) +
+
+  xlab("Year") +
+  ylab("Driver Death") +
+  ggtitle("Driver Death in UK") +
+  guides(colour=guide_legend(title="Forecast"))
+```
+
+```{r}
+fit_f1 <- auto.arima(t_Data,lambda="auto",biasadj = TRUE) %>% forecast(h=12)   
+autoplot(t_Data) + autolayer(fit_f1, series="forecasts with Box-cox",PI=FALSE) +
+
+  xlab("Year") +
+  ylab("Driver Death") +
+  ggtitle("Driver Death in UK") +
+  guides(colour=guide_legend(title="Forecast"))
+```
+```{r}
+accuracy(fit_f1)
+```
+```{r}
+ auto.arima(t_Data,lambda="auto",biasadj = TRUE) %>% forecast(h=12)%>% autoplot() 
+```
+
+```{r}
+f <- auto.arima(data,lambda=NULL,biasadj = FALSE) %>% forecast(h=12)   
+autoplot(data) + autolayer(f, series="forecasts without transform",PI=FALSE) +
+
+  xlab("Year") +
+  ylab("Driver Death") +
+  ggtitle("Driver Death in UK") +
+  guides(colour=guide_legend(title="Forecast"))
+```
+
